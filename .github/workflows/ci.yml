@@ -113,6 +113,24 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Install Python and dependencies
         run: |
           sudo apt-get update
@@ -121,6 +139,12 @@ jobs:
 
       - name: Build release binaries
         run: cargo build --release
+
+      - name: Verify binaries exist
+        run: |
+          ls -la target/release/
+          test -f target/release/dumpasn1
+          test -f target/release/dumpcbor
 
       - name: Run integration tests
         run: |

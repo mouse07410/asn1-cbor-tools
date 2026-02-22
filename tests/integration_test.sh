@@ -12,7 +12,16 @@ TESTS_PASSED=0
 TESTS_FAILED=0
 
 # Determine binary paths
-if [ -f "target/release/dumpasn1" ]; then
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+if [ -f "$PROJECT_ROOT/target/release/dumpasn1" ]; then
+    DUMPASN1="$PROJECT_ROOT/target/release/dumpasn1"
+    DUMPCBOR="$PROJECT_ROOT/target/release/dumpcbor"
+elif [ -f "$PROJECT_ROOT/target/debug/dumpasn1" ]; then
+    DUMPASN1="$PROJECT_ROOT/target/debug/dumpasn1"
+    DUMPCBOR="$PROJECT_ROOT/target/debug/dumpcbor"
+elif [ -f "target/release/dumpasn1" ]; then
     DUMPASN1="target/release/dumpasn1"
     DUMPCBOR="target/release/dumpcbor"
 elif [ -f "target/debug/dumpasn1" ]; then
@@ -20,6 +29,22 @@ elif [ -f "target/debug/dumpasn1" ]; then
     DUMPCBOR="target/debug/dumpcbor"
 else
     echo -e "${RED}Error: Binaries not found. Run 'cargo build' first.${NC}"
+    echo "Searched in:"
+    echo "  $PROJECT_ROOT/target/release/"
+    echo "  $PROJECT_ROOT/target/debug/"
+    echo "  target/release/"
+    echo "  target/debug/"
+    exit 1
+fi
+
+# Verify binaries are executable
+if [ ! -x "$DUMPASN1" ]; then
+    echo -e "${RED}Error: $DUMPASN1 is not executable${NC}"
+    exit 1
+fi
+
+if [ ! -x "$DUMPCBOR" ]; then
+    echo -e "${RED}Error: $DUMPCBOR is not executable${NC}"
     exit 1
 fi
 
