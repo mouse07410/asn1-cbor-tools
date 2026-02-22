@@ -220,7 +220,7 @@ mod tests {
     #[test]
     fn test_byte_operations() {
         let byte: u8 = 0b11010110;
-        
+
         // Test bit masking
         assert_eq!(byte & 0xC0, 0xC0); // Top 2 bits
         assert_eq!(byte & 0x20, 0x00); // Bit 6

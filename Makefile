@@ -1,7 +1,7 @@
 # Makefile for ASN.1/CBOR Tools
 # Alternative to using Cargo directly
 
-.PHONY: all build release debug clean install uninstall test help check fmt clippy test-all test-integration test-python test-coverage test-watch install-system uninstall-system test-basic
+.PHONY: all build release debug clean install uninstall test help check fmt fmt-check clippy test-all test-integration test-python test-coverage test-watch install-system uninstall-system test-basic
 
 # Default target
 all: release
@@ -61,7 +61,24 @@ check:
 # Format code
 fmt:
 	@echo "Formatting code..."
-	cargo fmt
+	@if command -v cargo fmt >/dev/null 2>&1; then \
+		cargo fmt --all; \
+		echo "✓ Code formatted with cargo fmt"; \
+	else \
+		echo "Warning: cargo not installed, using sed fallback"; \
+		find . -name "*.rs" -type f -exec sed -i 's/[[:space:]]*$$//' {} \; ; \
+		find . -name "*.rs" -type f -exec sed -i -e '$$a\' {} \; ; \
+		echo "✓ Basic formatting applied"; \
+	fi
+
+# Check formatting without modifying files
+fmt-check:
+	@echo "Checking code formatting..."
+	@if command -v cargo fmt >/dev/null 2>&1; then \
+		cargo fmt --all -- --check; \
+	else \
+		echo "Warning: cargo not installed, skipping format check"; \
+	fi
 
 # Run linter
 clippy:
@@ -131,6 +148,7 @@ help:
 	@echo "  make clean           - Remove build artifacts"
 	@echo "  make check           - Quick syntax check"
 	@echo "  make fmt             - Format code with rustfmt"
+	@echo "  make fmt-check       - Check formatting without modifying"
 	@echo "  make clippy          - Run clippy linter"
 	@echo ""
 	@echo "  make test            - Run unit tests"

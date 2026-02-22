@@ -201,12 +201,12 @@ impl CborDumper {
         if reader.read(&mut initial_byte)? == 0 {
             return Ok(None); // EOF
         }
-        
+
         let byte = initial_byte[0];
         let major_type = (byte >> 5) & 0x07;
         let additional_info = byte & 0x1F;
         self.offset += 1;
-        
+
         let value = match major_type {
             MAJOR_UNSIGNED => {
                 let val = self.read_additional(reader, additional_info)?;
@@ -403,7 +403,7 @@ impl CborDumper {
                 return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid major type"));
             }
         };
-        
+
         Ok(Some(CborItem::new(major_type, additional_info, value)))
     }
 
@@ -416,7 +416,7 @@ impl CborDumper {
                 print!("[{:4}] ", self.offset);
             }
         }
-        
+
         if !self.config.compact {
             for _ in 0..level {
                 print!("  ");
@@ -427,14 +427,14 @@ impl CborDumper {
     /// Print hex dump of bytes
     fn print_hex_dump(&self, bytes: &[u8], max_bytes: usize) {
         let display_bytes = bytes.len().min(max_bytes);
-        
+
         for (i, byte) in bytes.iter().take(display_bytes).enumerate() {
             if i > 0 && i % 16 == 0 {
                 print!("\n    ");
             }
             print!("{:02X} ", byte);
         }
-        
+
         if bytes.len() > display_bytes {
             print!("\n    ... ({} more bytes)", bytes.len() - display_bytes);
         }
@@ -447,9 +447,9 @@ impl CborDumper {
             println!("<max nesting level exceeded>");
             return Ok(());
         }
-        
+
         self.print_indent(level);
-        
+
         let type_prefix = if self.config.show_types {
             match &item.value {
                 CborValue::Unsigned(_) => "unsigned",
@@ -470,7 +470,7 @@ impl CborDumper {
         } else {
             ""
         };
-        
+
         match &item.value {
             CborValue::Unsigned(n) => {
                 if self.config.show_types {
@@ -495,10 +495,10 @@ impl CborDumper {
                 if self.config.print_hex || bytes.len() <= 64 {
                     self.print_indent(level);
                     print!("  ");
-                    let max = if self.config.print_all_data { 
-                        usize::MAX 
-                    } else { 
-                        self.config.max_bytes_display 
+                    let max = if self.config.print_all_data {
+                        usize::MAX
+                    } else {
+                        self.config.max_bytes_display
                     };
                     self.print_hex_dump(bytes, max);
                     println!();
@@ -617,14 +617,14 @@ impl CborDumper {
                 println!("break");
             }
         }
-        
+
         Ok(())
     }
 
     /// Main entry point to dump CBOR data
     fn dump_cbor<R: Read>(&mut self, reader: &mut R) -> io::Result<()> {
         let mut item_count = 0;
-        
+
         while let Some(item) = self.read_item(reader)? {
             if item_count > 0 {
                 println!();
@@ -632,7 +632,7 @@ impl CborDumper {
             self.print_item(&item, 0)?;
             item_count += 1;
         }
-        
+
         println!("\nParsing complete. {} item(s) found.", item_count);
         if self.no_errors > 0 {
             println!("Errors: {}", self.no_errors);
@@ -640,7 +640,7 @@ impl CborDumper {
         if self.no_warnings > 0 {
             println!("Warnings: {}", self.no_warnings);
         }
-        
+
         Ok(())
     }
 }
@@ -650,7 +650,7 @@ fn f16_to_f32(bits: u16) -> f32 {
     let sign = ((bits >> 15) & 1) as u32;
     let exp = ((bits >> 10) & 0x1F) as u32;
     let mant = (bits & 0x3FF) as u32;
-    
+
     if exp == 0 {
         if mant == 0 {
             // Zero
@@ -709,18 +709,18 @@ fn print_help(program_name: &str) {
 
 fn parse_args() -> Result<(Config, Option<String>), String> {
     let args: Vec<String> = env::args().collect();
-    
+
     if args.len() < 2 {
         return Err("No input file specified".to_string());
     }
-    
+
     let mut config = Config::default();
     let mut input_file: Option<String> = None;
     let mut i = 1;
-    
+
     while i < args.len() {
         let arg = &args[i];
-        
+
         match arg.as_str() {
             "-h" | "--help" => {
                 print_help(&args[0]);
@@ -781,14 +781,14 @@ fn parse_args() -> Result<(Config, Option<String>), String> {
                 if input_file.is_none() {
                     input_file = Some(arg.clone());
                 } else {
-                    return Err(format!("Multiple input files specified: {} and {}", 
+                    return Err(format!("Multiple input files specified: {} and {}",
                                       input_file.as_ref().unwrap(), arg));
                 }
             }
         }
         i += 1;
     }
-    
+
     Ok((config, input_file))
 }
 
@@ -801,7 +801,7 @@ fn main() -> io::Result<()> {
             std::process::exit(1);
         }
     };
-    
+
     let filename = match filename {
         Some(f) => f,
         None => {
@@ -810,15 +810,15 @@ fn main() -> io::Result<()> {
             std::process::exit(1);
         }
     };
-    
+
     let file = File::open(&filename).map_err(|e| {
         eprintln!("Error opening file '{}': {}", filename, e);
         e
     })?;
     let mut reader = BufReader::new(file);
-    
+
     let mut dumper = CborDumper::new(config);
-    
+
     if dumper.config.verbose {
         println!("Dumping CBOR file: {}", filename);
         println!("Configuration:");
@@ -831,9 +831,9 @@ fn main() -> io::Result<()> {
     } else if !dumper.config.compact {
         println!("Dumping CBOR file: {}\n", filename);
     }
-    
+
     dumper.dump_cbor(&mut reader)?;
-    
+
     Ok(())
 }
 

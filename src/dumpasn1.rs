@@ -188,7 +188,7 @@ impl Asn1Dumper {
         if reader.read(&mut tag_byte)? == 0 {
             return Ok(None); // EOF
         }
-        
+
         let tag = tag_byte[0];
         header.push(tag);
         item.id = tag & !TAG_MASK;
@@ -203,13 +203,13 @@ impl Asn1Dumper {
                 header.push(byte[0]);
                 tag_num = (tag_num << 7) | ((byte[0] & 0x7F) as u32);
                 self.f_pos += 1;
-                
+
                 if (byte[0] & LEN_XTND) == 0 || header.len() >= 5 {
                     break;
                 }
             }
         }
-        
+
         item.tag = tag_num as u8;
 
         // Read length byte
@@ -219,17 +219,17 @@ impl Asn1Dumper {
         self.f_pos += 2; // Tag + length byte
 
         let mut length = len_byte[0];
-        
+
         if (length & LEN_XTND) != 0 {
             // Long form or indefinite length
             let num_octets = (length & LEN_MASK) as usize;
-            
+
             if num_octets == 0 {
                 // Indefinite length
                 item.indefinite = true;
                 item.length = 0;
             } else if num_octets > 4 {
-                return Err(io::Error::new(io::ErrorKind::InvalidData, 
+                return Err(io::Error::new(io::ErrorKind::InvalidData,
                     "Length too long"));
             } else {
                 // Definite long form
@@ -241,7 +241,7 @@ impl Asn1Dumper {
                     item.length = (item.length << 8) | (byte[0] as i64);
                 }
                 self.f_pos += num_octets;
-                
+
                 // Check for non-canonical encoding
                 if item.length < 128 {
                     item.non_canonical = true;
@@ -254,7 +254,7 @@ impl Asn1Dumper {
 
         item.header = header;
         item.header_size = item.header.len();
-        
+
         Ok(Some(item))
     }
 
@@ -267,7 +267,7 @@ impl Asn1Dumper {
                 print!("{:4} {:4}: ", self.f_pos, 0);
             }
         }
-        
+
         for _ in 0..level {
             if self.config.shallow_indent {
                 print!(" ");
@@ -275,7 +275,7 @@ impl Asn1Dumper {
                 print!("  ");
             }
         }
-        
+
         if self.config.print_dots && level > 0 {
             print!(". ");
         }
@@ -286,7 +286,7 @@ impl Asn1Dumper {
         let mut bytes_to_read = length.min(if self.config.print_all_data { length } else { 384 });
         let mut buffer = vec![0u8; bytes_to_read as usize];
         reader.read_exact(&mut buffer)?;
-        
+
         print!(" ");
         for (i, byte) in buffer.iter().enumerate() {
             if i > 0 && i % 16 == 0 {
@@ -296,14 +296,14 @@ impl Asn1Dumper {
             }
             print!("{:02X} ", byte);
         }
-        
+
         if length > bytes_to_read && !self.config.print_all_data {
             println!("\n  ... ({} more bytes)", length - bytes_to_read);
             // Skip remaining bytes
             let mut remaining = vec![0u8; (length - bytes_to_read) as usize];
             reader.read_exact(&mut remaining)?;
         }
-        
+
         self.f_pos += length as usize;
         println!();
         Ok(())
@@ -314,7 +314,7 @@ impl Asn1Dumper {
         let bytes_to_read = length.min(if self.config.print_all_data { length } else { 384 });
         let mut buffer = vec![0u8; bytes_to_read as usize];
         reader.read_exact(&mut buffer)?;
-        
+
         print!(" '");
         for byte in &buffer {
             let ch = *byte as char;
@@ -325,14 +325,14 @@ impl Asn1Dumper {
             }
         }
         print!("'");
-        
+
         if length > bytes_to_read && !self.config.print_all_data {
             println!("\n  ... ({} more bytes)", length - bytes_to_read);
             // Skip remaining bytes
             let mut remaining = vec![0u8; (length - bytes_to_read) as usize];
             reader.read_exact(&mut remaining)?;
         }
-        
+
         self.f_pos += length as usize;
         println!();
         Ok(())
@@ -346,21 +346,21 @@ impl Asn1Dumper {
         } else {
             let mut buffer = vec![0u8; length as usize];
             reader.read_exact(&mut buffer)?;
-            
+
             // Convert to signed integer
             let mut value: i64 = 0;
             let is_negative = (buffer[0] & 0x80) != 0;
-            
+
             for byte in &buffer {
                 value = (value << 8) | (*byte as i64);
             }
-            
+
             // Handle sign extension for negative numbers
             if is_negative {
                 let shift = (8 - length) * 8;
                 value = (value << shift) >> shift;
             }
-            
+
             println!(" {}", value);
             self.f_pos += length as usize;
             Ok(())
@@ -371,19 +371,19 @@ impl Asn1Dumper {
     fn print_oid<R: Read>(&mut self, reader: &mut R, length: i64, level: usize) -> io::Result<()> {
         let mut buffer = vec![0u8; length as usize];
         reader.read_exact(&mut buffer)?;
-        
+
         if buffer.is_empty() {
             println!(" (empty)");
             return Ok(());
         }
-        
+
         print!(" ");
-        
+
         // First byte encodes first two components
         let first = buffer[0] / 40;
         let second = buffer[0] % 40;
         print!("{}.{}", first, second);
-        
+
         // Decode remaining components
         let mut i = 1;
         while i < buffer.len() {
@@ -401,7 +401,7 @@ impl Asn1Dumper {
             }
             print!(".{}", value);
         }
-        
+
         println!();
         self.f_pos += length as usize;
         Ok(())
@@ -413,9 +413,9 @@ impl Asn1Dumper {
             println!(" {{}}");
             return Ok(());
         }
-        
+
         println!(" {{");
-        
+
         if item.indefinite {
             // Indefinite length - read until EOC
             loop {
@@ -431,7 +431,7 @@ impl Asn1Dumper {
         } else {
             // Definite length
             let end_pos = self.f_pos + item.length as usize;
-            
+
             while self.f_pos < end_pos {
                 if let Some(sub_item) = self.get_item(reader)? {
                     self.print_asn1_object(reader, &sub_item, level + 1)?;
@@ -440,7 +440,7 @@ impl Asn1Dumper {
                 }
             }
         }
-        
+
         self.print_indent(level);
         println!("}}");
         Ok(())
@@ -451,9 +451,9 @@ impl Asn1Dumper {
         if level > self.config.max_nest_level {
             return Ok(());
         }
-        
+
         self.print_indent(level);
-        
+
         // Print tag class if not UNIVERSAL
         let class = item.id & CLASS_MASK;
         if class != UNIVERSAL {
@@ -463,7 +463,7 @@ impl Asn1Dumper {
                 PRIVATE => "PRIVATE",
                 _ => "UNIVERSAL",
             };
-            
+
             if !class_name.is_empty() {
                 print!("[{} {}]", class_name, item.tag);
             } else {
@@ -473,7 +473,7 @@ impl Asn1Dumper {
             // Universal tag
             print!("{}", self.tag_name(item.tag));
         }
-        
+
         // Handle constructed vs primitive
         if (item.id & FORM_MASK) == CONSTRUCTED {
             self.print_constructed(reader, level, item)?;
@@ -513,7 +513,7 @@ impl Asn1Dumper {
                 OID => {
                     self.print_oid(reader, item.length, level)?;
                 }
-                UTF8STRING | PRINTABLESTRING | IA5STRING | VISIBLESTRING | 
+                UTF8STRING | PRINTABLESTRING | IA5STRING | VISIBLESTRING |
                 GENERALSTRING | NUMERICSTRING | T61STRING | VIDEOTEXSTRING => {
                     self.print_string(reader, item.length, level)?;
                 }
@@ -528,7 +528,7 @@ impl Asn1Dumper {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -537,7 +537,7 @@ impl Asn1Dumper {
         while let Some(item) = self.get_item(reader)? {
             self.print_asn1_object(reader, &item, 0)?;
         }
-        
+
         println!("\nParsing complete.");
         if self.no_errors > 0 {
             println!("Errors: {}", self.no_errors);
@@ -545,7 +545,7 @@ impl Asn1Dumper {
         if self.no_warnings > 0 {
             println!("Warnings: {}", self.no_warnings);
         }
-        
+
         Ok(())
     }
 }
@@ -585,18 +585,18 @@ fn print_help(program_name: &str) {
 
 fn parse_args() -> Result<(Config, Option<String>), String> {
     let args: Vec<String> = env::args().collect();
-    
+
     if args.len() < 2 {
         return Err("No input file specified".to_string());
     }
-    
+
     let mut config = Config::default();
     let mut input_file: Option<String> = None;
     let mut i = 1;
-    
+
     while i < args.len() {
         let arg = &args[i];
-        
+
         match arg.as_str() {
             "-h" | "--help" => {
                 print_help(&args[0]);
@@ -681,14 +681,14 @@ fn parse_args() -> Result<(Config, Option<String>), String> {
                 if input_file.is_none() {
                     input_file = Some(arg.clone());
                 } else {
-                    return Err(format!("Multiple input files specified: {} and {}", 
+                    return Err(format!("Multiple input files specified: {} and {}",
                                       input_file.as_ref().unwrap(), arg));
                 }
             }
         }
         i += 1;
     }
-    
+
     Ok((config, input_file))
 }
 
@@ -701,7 +701,7 @@ fn main() -> io::Result<()> {
             std::process::exit(1);
         }
     };
-    
+
     let filename = match filename {
         Some(f) => f,
         None => {
@@ -710,15 +710,15 @@ fn main() -> io::Result<()> {
             std::process::exit(1);
         }
     };
-    
+
     let file = File::open(&filename).map_err(|e| {
         eprintln!("Error opening file '{}': {}", filename, e);
         e
     })?;
     let mut reader = BufReader::new(file);
-    
+
     let mut dumper = Asn1Dumper::new(config);
-    
+
     if dumper.config.verbose {
         println!("Dumping ASN.1 file: {}", filename);
         println!("Configuration:");
@@ -730,9 +730,9 @@ fn main() -> io::Result<()> {
     } else if !dumper.config.do_pure {
         println!("Dumping ASN.1 file: {}\n", filename);
     }
-    
+
     dumper.dump_asn1(&mut reader)?;
-    
+
     Ok(())
 }
 
