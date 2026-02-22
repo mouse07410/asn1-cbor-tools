@@ -1,0 +1,3 @@
+# Python dependencies for running the test suite
+pyasn1>=0.4.8
+cbor2>=5.4.0
