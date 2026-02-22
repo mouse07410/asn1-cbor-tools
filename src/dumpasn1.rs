@@ -3,8 +3,7 @@
 // This is a translation of the core concepts and approach to Rust
 
 use std::fs::File;
-use std::io::{self, Read, Seek, SeekFrom, BufReader};
-use std::fmt;
+use std::io::{self, Read, Seek, BufReader};
 use std::env;
 
 // Constants for ASN.1 tag classes
@@ -16,7 +15,6 @@ const PRIVATE: u8 = 0xC0;
 
 // Constants for encoding type
 const FORM_MASK: u8 = 0x20;
-const PRIMITIVE: u8 = 0x00;
 const CONSTRUCTED: u8 = 0x20;
 
 // Universal tag values
@@ -98,7 +96,6 @@ struct Config {
     do_outline_only: bool,
     verbose: bool,
     print_offset: bool,
-    reverse_bitstring: bool,
 }
 
 impl Default for Config {
@@ -121,7 +118,6 @@ impl Default for Config {
             do_outline_only: false,
             verbose: false,
             print_offset: true,
-            reverse_bitstring: true,
         }
     }
 }
@@ -218,7 +214,7 @@ impl Asn1Dumper {
         header.push(len_byte[0]);
         self.f_pos += 2; // Tag + length byte
 
-        let mut length = len_byte[0];
+        let length = len_byte[0];
 
         if (length & LEN_XTND) != 0 {
             // Long form or indefinite length
@@ -283,7 +279,7 @@ impl Asn1Dumper {
 
     /// Print hex dump of data
     fn dump_hex<R: Read>(&mut self, reader: &mut R, length: i64, level: usize) -> io::Result<()> {
-        let mut bytes_to_read = length.min(if self.config.print_all_data { length } else { 384 });
+        let bytes_to_read = length.min(if self.config.print_all_data { length } else { 384 });
         let mut buffer = vec![0u8; bytes_to_read as usize];
         reader.read_exact(&mut buffer)?;
 
@@ -310,7 +306,7 @@ impl Asn1Dumper {
     }
 
     /// Print string data
-    fn print_string<R: Read>(&mut self, reader: &mut R, length: i64, level: usize) -> io::Result<()> {
+    fn print_string<R: Read>(&mut self, reader: &mut R, length: i64, _level: usize) -> io::Result<()> {
         let bytes_to_read = length.min(if self.config.print_all_data { length } else { 384 });
         let mut buffer = vec![0u8; bytes_to_read as usize];
         reader.read_exact(&mut buffer)?;
@@ -368,7 +364,7 @@ impl Asn1Dumper {
     }
 
     /// Print OID
-    fn print_oid<R: Read>(&mut self, reader: &mut R, length: i64, level: usize) -> io::Result<()> {
+    fn print_oid<R: Read>(&mut self, reader: &mut R, length: i64, _level: usize) -> io::Result<()> {
         let mut buffer = vec![0u8; length as usize];
         reader.read_exact(&mut buffer)?;
 

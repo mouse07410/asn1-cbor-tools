@@ -4,7 +4,6 @@
 
 use std::fs::File;
 use std::io::{self, Read, BufReader};
-use std::fmt;
 use std::env;
 
 // CBOR major types
@@ -50,6 +49,7 @@ const TAG_SELF_DESCRIBE: u64 = 55799;
 
 /// Structure to hold information about a CBOR item
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct CborItem {
     major_type: u8,
     additional_info: u8,
@@ -99,7 +99,6 @@ struct Config {
     compact: bool,
     print_all_data: bool,
     hex_values: bool,
-    no_color: bool,
     show_types: bool,
 }
 
@@ -115,7 +114,6 @@ impl Default for Config {
             compact: false,
             print_all_data: false,
             hex_values: false,
-            no_color: true,
             show_types: true,
         }
     }

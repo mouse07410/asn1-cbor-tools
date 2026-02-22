@@ -3,7 +3,7 @@
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
+    //use std::io::Cursor; // for future enhancements
 
     // Test helper functions
     fn create_test_data(hex: &str) -> Vec<u8> {
