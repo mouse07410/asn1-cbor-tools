@@ -736,7 +736,7 @@ fn parse_args() -> Result<(Config, Option<String>), String> {
     parse_args_from(&args)
 }
 
-fn main() -> io::Result<()> {
+fn run() -> io::Result<()> {
     let (config, filename) = match parse_args() {
         Ok((cfg, file)) => (cfg, file),
         Err(e) => {
@@ -775,9 +775,18 @@ fn main() -> io::Result<()> {
         println!("Dumping ASN.1 file: {}\n", filename);
     }
 
-    dumper.dump_asn1(&mut reader)?;
+    dumper.dump_asn1(&mut reader)
+}
 
-    Ok(())
+fn main() {
+    match run() {
+        Ok(()) => {}
+        Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {}
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            std::process::exit(1);
+        }
+    }
 }
 
 #[cfg(test)]

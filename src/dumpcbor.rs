@@ -89,7 +89,7 @@ impl CborItem {
 }
 
 /// Configuration options for the dumper
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Config {
     print_hex: bool,
     max_bytes_display: usize,
@@ -802,7 +802,7 @@ fn parse_args() -> Result<(Config, Option<String>), String> {
     parse_args_from(&args)
 }
 
-fn main() -> io::Result<()> {
+fn run() -> io::Result<()> {
     let (config, filename) = match parse_args() {
         Ok((cfg, file)) => (cfg, file),
         Err(e) => {
@@ -842,9 +842,18 @@ fn main() -> io::Result<()> {
         println!("Dumping CBOR file: {}\n", filename);
     }
 
-    dumper.dump_cbor(&mut reader)?;
+    dumper.dump_cbor(&mut reader)
+}
 
-    Ok(())
+fn main() {
+    match run() {
+        Ok(()) => {}
+        Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {}
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            std::process::exit(1);
+        }
+    }
 }
 
 #[cfg(test)]
