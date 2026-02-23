@@ -7,8 +7,8 @@
 # Cargo.lock
 
 # IDE files
-#.vscode/
-#.idea/
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
