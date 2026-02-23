@@ -13,11 +13,11 @@ hard_tabs = false
 # Number of spaces per tab
 tab_spaces = 4
 
-# Add trailing comma in arrays/structs
-trailing_comma = "Vertical"
+# Add trailing comma in arrays/structs (nightly only)
+#trailing_comma = "Vertical"
 
-# Match expression arm indent
-match_arm_blocks = true
+# Match expression arm indent (nightly only)
+#match_arm_blocks = true
 
 # Match block trailing comma
 match_block_trailing_comma = false
@@ -31,14 +31,14 @@ reorder_modules = true
 # Maximum width for single line statements
 single_line_if_else_max_width = 50
 
-# Format strings
-format_strings = false
+# Format strings (nightly only)
+#format_strings = false
 
-# Remove blank lines at start of blocks
-blank_lines_lower_bound = 0
+# Remove blank lines at start of blocks (nightly only)
+#blank_lines_lower_bound = 0
 
-# Remove blank lines at end of blocks
-blank_lines_upper_bound = 1
+# Remove blank lines at end of blocks (nightly only)
+#blank_lines_upper_bound = 1
 
 # Ensure newline at end of file
 newline_style = "Unix"

@@ -2,9 +2,9 @@
 // Based on the concepts and approach from dumpasn1.c
 // Dumps CBOR-encoded data in a human-readable format
 
-use std::fs::File;
-use std::io::{self, Read, BufReader};
 use std::env;
+use std::fs::File;
+use std::io::{self, BufReader, Read};
 
 // CBOR major types
 const MAJOR_UNSIGNED: u8 = 0;
@@ -190,7 +190,10 @@ impl CborDumper {
                 Ok(u64::from_be_bytes(buf))
             }
             AI_INDEFINITE => Ok(u64::MAX), // Marker for indefinite length
-            _ => Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid additional info")),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid additional info",
+            )),
         }
     }
 
@@ -340,7 +343,10 @@ impl CborDumper {
                     CborValue::Tag(tag, Box::new(tagged_item))
                 } else {
                     self.no_errors += 1;
-                    return Err(io::Error::new(io::ErrorKind::InvalidData, "Missing tagged value"));
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Missing tagged value",
+                    ));
                 }
             }
             MAJOR_SIMPLE => {
@@ -383,7 +389,10 @@ impl CborDumper {
                 }
             }
             _ => {
-                return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid major type"));
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Invalid major type",
+                ));
             }
         };
 
@@ -490,7 +499,12 @@ impl CborDumper {
             CborValue::Text(s) => {
                 if s.len() > 80 && !self.config.print_all_data {
                     if self.config.show_types {
-                        println!("{}: \"{}...\" ({} chars total)", type_prefix, &s[..80], s.len());
+                        println!(
+                            "{}: \"{}...\" ({} chars total)",
+                            type_prefix,
+                            &s[..80],
+                            s.len()
+                        );
                     } else {
                         println!("\"{}...\"", &s[..80]);
                     }
@@ -663,9 +677,13 @@ fn print_help(program_name: &str) {
     println!("\nDumps CBOR-encoded data (RFC 8949) in a human-readable format.\n");
     println!("OPTIONS:");
     println!("  -h, --help              Show this help message and exit");
-    println!("  -a, --print-all         Print all data in long byte strings (not just first 384 bytes)");
+    println!(
+        "  -a, --print-all         Print all data in long byte strings (not just first 384 bytes)"
+    );
     println!("  -c, --compact           Compact output mode with minimal whitespace");
-    println!("  -f <file>               Read input from <file> (alternative to positional argument)");
+    println!(
+        "  -f <file>               Read input from <file> (alternative to positional argument)"
+    );
     println!("  -l <level>              Maximum nesting level to display (default: 100)");
     println!("  -m <bytes>              Maximum bytes to display for byte strings (default: 384)");
     println!("  -o, --offsets           Show byte offsets for each item");
@@ -676,8 +694,14 @@ fn print_help(program_name: &str) {
     println!("  --no-decode-nested      Don't try to decode nested CBOR in byte strings");
     println!("\nEXAMPLES:");
     println!("  {} data.cbor", program_name);
-    println!("  {} --hex --offsets message.cbor     # Show hex and offsets", program_name);
-    println!("  {} -c -l 3 large.cbor               # Compact mode, max 3 levels deep", program_name);
+    println!(
+        "  {} --hex --offsets message.cbor     # Show hex and offsets",
+        program_name
+    );
+    println!(
+        "  {} -c -l 3 large.cbor               # Compact mode, max 3 levels deep",
+        program_name
+    );
     println!("\nThe input file should contain binary CBOR-encoded data.");
     println!("\nCBOR MAJOR TYPES:");
     println!("  0: Unsigned integer       4: Array");
@@ -721,7 +745,8 @@ fn parse_args_from(args: &[String]) -> Result<(Config, Option<String>), String> 
                 if i >= args.len() {
                     return Err("Missing value after -l".to_string());
                 }
-                config.max_nest_level = args[i].parse()
+                config.max_nest_level = args[i]
+                    .parse()
                     .map_err(|_| format!("Invalid number for max level: {}", args[i]))?;
             }
             "-m" | "--max-bytes" => {
@@ -729,7 +754,8 @@ fn parse_args_from(args: &[String]) -> Result<(Config, Option<String>), String> 
                 if i >= args.len() {
                     return Err("Missing value after -m".to_string());
                 }
-                config.max_bytes_display = args[i].parse()
+                config.max_bytes_display = args[i]
+                    .parse()
                     .map_err(|_| format!("Invalid number for max bytes: {}", args[i]))?;
             }
             "-o" | "--offsets" => {
@@ -756,8 +782,10 @@ fn parse_args_from(args: &[String]) -> Result<(Config, Option<String>), String> 
                 }
                 // Positional argument - input file
                 if let Some(existing) = &input_file {
-                    return Err(format!("Multiple input files specified: {} and {}",
-                                      existing, arg));
+                    return Err(format!(
+                        "Multiple input files specified: {} and {}",
+                        existing, arg
+                    ));
                 } else {
                     input_file = Some(arg.clone());
                 }
@@ -797,15 +825,24 @@ mod tests {
             err.contains("Multiple input files specified"),
             "unexpected error message: {err}"
         );
-        assert!(err.contains("first.cbor"), "error should name the first file: {err}");
-        assert!(err.contains("second.cbor"), "error should name the second file: {err}");
+        assert!(
+            err.contains("first.cbor"),
+            "error should name the first file: {err}"
+        );
+        assert!(
+            err.contains("second.cbor"),
+            "error should name the second file: {err}"
+        );
     }
 
     #[test]
     fn test_parse_no_args_errors() {
         let result = parse_args_from(&args(&["dumpcbor"]));
         let err = result.expect_err("should fail with no args");
-        assert!(err.contains("No input file specified"), "unexpected error: {err}");
+        assert!(
+            err.contains("No input file specified"),
+            "unexpected error: {err}"
+        );
     }
 
     #[test]
@@ -876,4 +913,3 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
-

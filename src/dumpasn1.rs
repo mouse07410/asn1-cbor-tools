@@ -2,9 +2,9 @@
 // Based on dumpasn1.c by Peter Gutmann
 // This is a translation of the core concepts and approach to Rust
 
-use std::fs::File;
-use std::io::{self, Read, Seek, BufReader};
 use std::env;
+use std::fs::File;
+use std::io::{self, BufReader, Read, Seek};
 
 // Constants for ASN.1 tag classes
 const CLASS_MASK: u8 = 0xC0;
@@ -54,13 +54,13 @@ const LEN_MASK: u8 = 0x7F;
 /// Structure to hold information about an ASN.1 item
 #[derive(Debug, Clone)]
 struct Asn1Item {
-    id: u8,                    // Tag class + primitive/constructed
-    tag: u8,                   // Tag number
-    length: i64,               // Data length
-    indefinite: bool,          // Item has indefinite length
-    non_canonical: bool,       // Non-canonical length encoding used
-    header: Vec<u8>,           // Tag+length data
-    header_size: usize,        // Size of tag+length
+    id: u8,              // Tag class + primitive/constructed
+    tag: u8,             // Tag number
+    length: i64,         // Data length
+    indefinite: bool,    // Item has indefinite length
+    non_canonical: bool, // Non-canonical length encoding used
+    header: Vec<u8>,     // Tag+length data
+    header_size: usize,  // Size of tag+length
 }
 
 impl Asn1Item {
@@ -226,8 +226,10 @@ impl Asn1Dumper {
                 item.indefinite = true;
                 item.length = 0;
             } else if num_octets > 4 {
-                return Err(io::Error::new(io::ErrorKind::InvalidData,
-                    "Length too long"));
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Length too long",
+                ));
             } else {
                 // Definite long form
                 item.length = 0;
@@ -280,7 +282,11 @@ impl Asn1Dumper {
 
     /// Print hex dump of data
     fn dump_hex<R: Read>(&mut self, reader: &mut R, length: i64, level: usize) -> io::Result<()> {
-        let bytes_to_read = length.min(if self.config.print_all_data { length } else { 384 });
+        let bytes_to_read = length.min(if self.config.print_all_data {
+            length
+        } else {
+            384
+        });
         let mut buffer = vec![0u8; bytes_to_read as usize];
         reader.read_exact(&mut buffer)?;
 
@@ -307,8 +313,17 @@ impl Asn1Dumper {
     }
 
     /// Print string data
-    fn print_string<R: Read>(&mut self, reader: &mut R, length: i64, _level: usize) -> io::Result<()> {
-        let bytes_to_read = length.min(if self.config.print_all_data { length } else { 384 });
+    fn print_string<R: Read>(
+        &mut self,
+        reader: &mut R,
+        length: i64,
+        _level: usize,
+    ) -> io::Result<()> {
+        let bytes_to_read = length.min(if self.config.print_all_data {
+            length
+        } else {
+            384
+        });
         let mut buffer = vec![0u8; bytes_to_read as usize];
         reader.read_exact(&mut buffer)?;
 
@@ -336,7 +351,12 @@ impl Asn1Dumper {
     }
 
     /// Print integer value
-    fn print_integer<R: Read>(&mut self, reader: &mut R, length: i64, level: usize) -> io::Result<()> {
+    fn print_integer<R: Read>(
+        &mut self,
+        reader: &mut R,
+        length: i64,
+        level: usize,
+    ) -> io::Result<()> {
         if length > 8 {
             // Too large for native integer, print as hex
             self.dump_hex(reader, length, level)
@@ -405,7 +425,12 @@ impl Asn1Dumper {
     }
 
     /// Print a constructed object
-    fn print_constructed<R: Read + Seek>(&mut self, reader: &mut R, level: usize, item: &Asn1Item) -> io::Result<()> {
+    fn print_constructed<R: Read + Seek>(
+        &mut self,
+        reader: &mut R,
+        level: usize,
+        item: &Asn1Item,
+    ) -> io::Result<()> {
         if item.length == 0 && !item.indefinite {
             println!(" {{}}");
             return Ok(());
@@ -440,7 +465,12 @@ impl Asn1Dumper {
     }
 
     /// Print a single ASN.1 object
-    fn print_asn1_object<R: Read + Seek>(&mut self, reader: &mut R, item: &Asn1Item, level: usize) -> io::Result<()> {
+    fn print_asn1_object<R: Read + Seek>(
+        &mut self,
+        reader: &mut R,
+        item: &Asn1Item,
+        level: usize,
+    ) -> io::Result<()> {
         if level > self.config.max_nest_level {
             return Ok(());
         }
@@ -506,8 +536,8 @@ impl Asn1Dumper {
                 OID => {
                     self.print_oid(reader, item.length, level)?;
                 }
-                UTF8STRING | PRINTABLESTRING | IA5STRING | VISIBLESTRING |
-                GENERALSTRING | NUMERICSTRING | T61STRING | VIDEOTEXSTRING => {
+                UTF8STRING | PRINTABLESTRING | IA5STRING | VISIBLESTRING | GENERALSTRING
+                | NUMERICSTRING | T61STRING | VIDEOTEXSTRING => {
                     self.print_string(reader, item.length, level)?;
                 }
                 UTCTIME | GENERALIZEDTIME => {
@@ -550,15 +580,23 @@ fn print_help(program_name: &str) {
     println!("\nDumps ASN.1 DER-encoded data in a human-readable format.\n");
     println!("OPTIONS:");
     println!("  -h, --help              Show this help message and exit");
-    println!("  -a, --print-all         Print all data in long data blocks (not just first 384 bytes)");
+    println!(
+        "  -a, --print-all         Print all data in long data blocks (not just first 384 bytes)"
+    );
     println!("  -c, --no-check-charset  Don't try to interpret OCTET STRINGs as character strings");
     println!("  -d, --dump-header       Dump hex header (tag+length) before object content");
     println!("  -dd                     Dump hex header + first 24 bytes of content");
-    println!("  -e, --no-check-encaps   Don't try to interpret OCTET/BIT STRINGs as encapsulated data");
-    println!("  -f <file>               Read input from <file> (alternative to positional argument)");
+    println!(
+        "  -e, --no-check-encaps   Don't try to interpret OCTET/BIT STRINGs as encapsulated data"
+    );
+    println!(
+        "  -f <file>               Read input from <file> (alternative to positional argument)"
+    );
     println!("  -i, --shallow-indent    Use shallow indenting (1 space instead of 2)");
     println!("  -l <length>             Maximum nesting level for which to display output (default: 100)");
-    println!("  -o, --outline           Only display constructed object outline, skip primitive content");
+    println!(
+        "  -o, --outline           Only display constructed object outline, skip primitive content"
+    );
     println!("  -p, --pure              Pure display mode: no offset/length information on left");
     println!("  -r, --raw-time          Print time values as raw string instead of formatted");
     println!("  -t, --text              Dump text alongside hex data for OCTET STRINGs");
@@ -571,8 +609,14 @@ fn print_help(program_name: &str) {
     println!("  --oid-info              Print extra information about OIDs");
     println!("\nEXAMPLES:");
     println!("  {} certificate.der", program_name);
-    println!("  {} -p -x cert.der                # Pure mode with hex offsets", program_name);
-    println!("  {} --outline --max-level 5 large.der  # Show only top 5 levels", program_name);
+    println!(
+        "  {} -p -x cert.der                # Pure mode with hex offsets",
+        program_name
+    );
+    println!(
+        "  {} --outline --max-level 5 large.der  # Show only top 5 levels",
+        program_name
+    );
     println!("\nThe input file should contain binary DER-encoded ASN.1 data.");
 }
 
@@ -623,7 +667,8 @@ fn parse_args_from(args: &[String]) -> Result<(Config, Option<String>), String> 
                 if i >= args.len() {
                     return Err("Missing value after -l".to_string());
                 }
-                config.max_nest_level = args[i].parse()
+                config.max_nest_level = args[i]
+                    .parse()
                     .map_err(|_| format!("Invalid number for max level: {}", args[i]))?;
             }
             "-o" | "--outline" => {
@@ -646,7 +691,8 @@ fn parse_args_from(args: &[String]) -> Result<(Config, Option<String>), String> 
                 if i >= args.len() {
                     return Err("Missing value after -w".to_string());
                 }
-                config.output_width = args[i].parse()
+                config.output_width = args[i]
+                    .parse()
                     .map_err(|_| format!("Invalid number for width: {}", args[i]))?;
             }
             "-x" | "--hex-values" => {
@@ -670,8 +716,10 @@ fn parse_args_from(args: &[String]) -> Result<(Config, Option<String>), String> 
                 }
                 // Positional argument - input file
                 if let Some(existing) = &input_file {
-                    return Err(format!("Multiple input files specified: {} and {}",
-                                      existing, arg));
+                    return Err(format!(
+                        "Multiple input files specified: {} and {}",
+                        existing, arg
+                    ));
                 } else {
                     input_file = Some(arg.clone());
                 }
@@ -711,15 +759,24 @@ mod tests {
             err.contains("Multiple input files specified"),
             "unexpected error message: {err}"
         );
-        assert!(err.contains("first.der"), "error should name the first file: {err}");
-        assert!(err.contains("second.der"), "error should name the second file: {err}");
+        assert!(
+            err.contains("first.der"),
+            "error should name the first file: {err}"
+        );
+        assert!(
+            err.contains("second.der"),
+            "error should name the second file: {err}"
+        );
     }
 
     #[test]
     fn test_parse_no_args_errors() {
         let result = parse_args_from(&args(&["dumpasn1"]));
         let err = result.expect_err("should fail with no args");
-        assert!(err.contains("No input file specified"), "unexpected error: {err}");
+        assert!(
+            err.contains("No input file specified"),
+            "unexpected error: {err}"
+        );
     }
 
     #[test]
@@ -789,4 +846,3 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
-
