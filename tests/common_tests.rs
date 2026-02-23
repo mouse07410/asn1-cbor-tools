@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn test_multi_byte_integer_parsing() {
         // Test big-endian integer parsing
-        let bytes = vec![0x01, 0x02, 0x03, 0x04];
+        let bytes = [0x01, 0x02, 0x03, 0x04];
         let value = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
         assert_eq!(value, 0x01020304);
     }

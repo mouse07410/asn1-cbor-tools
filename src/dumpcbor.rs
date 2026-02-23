@@ -802,6 +802,51 @@ fn parse_args() -> Result<(Config, Option<String>), String> {
     parse_args_from(&args)
 }
 
+fn main() -> io::Result<()> {
+    let (config, filename) = match parse_args() {
+        Ok((cfg, file)) => (cfg, file),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            eprintln!("\nUse --help for usage information");
+            std::process::exit(1);
+        }
+    };
+
+    let filename = match filename {
+        Some(f) => f,
+        None => {
+            eprintln!("Error: No input file specified");
+            eprintln!("\nUse --help for usage information");
+            std::process::exit(1);
+        }
+    };
+
+    let file = File::open(&filename).map_err(|e| {
+        eprintln!("Error opening file '{}': {}", filename, e);
+        e
+    })?;
+    let mut reader = BufReader::new(file);
+
+    let mut dumper = CborDumper::new(config);
+
+    if dumper.config.verbose {
+        println!("Dumping CBOR file: {}", filename);
+        println!("Configuration:");
+        println!("  Print all data: {}", dumper.config.print_all_data);
+        println!("  Show hex: {}", dumper.config.print_hex);
+        println!("  Show offsets: {}", dumper.config.show_offsets);
+        println!("  Max nesting level: {}", dumper.config.max_nest_level);
+        println!("  Max bytes display: {}", dumper.config.max_bytes_display);
+        println!();
+    } else if !dumper.config.compact {
+        println!("Dumping CBOR file: {}\n", filename);
+    }
+
+    dumper.dump_cbor(&mut reader)?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -867,49 +912,4 @@ mod tests {
         let err = result.expect_err("should fail on unknown option");
         assert!(err.contains("Unknown option"), "unexpected error: {err}");
     }
-}
-
-fn main() -> io::Result<()> {
-    let (config, filename) = match parse_args() {
-        Ok((cfg, file)) => (cfg, file),
-        Err(e) => {
-            eprintln!("Error: {}", e);
-            eprintln!("\nUse --help for usage information");
-            std::process::exit(1);
-        }
-    };
-
-    let filename = match filename {
-        Some(f) => f,
-        None => {
-            eprintln!("Error: No input file specified");
-            eprintln!("\nUse --help for usage information");
-            std::process::exit(1);
-        }
-    };
-
-    let file = File::open(&filename).map_err(|e| {
-        eprintln!("Error opening file '{}': {}", filename, e);
-        e
-    })?;
-    let mut reader = BufReader::new(file);
-
-    let mut dumper = CborDumper::new(config);
-
-    if dumper.config.verbose {
-        println!("Dumping CBOR file: {}", filename);
-        println!("Configuration:");
-        println!("  Print all data: {}", dumper.config.print_all_data);
-        println!("  Show hex: {}", dumper.config.print_hex);
-        println!("  Show offsets: {}", dumper.config.show_offsets);
-        println!("  Max nesting level: {}", dumper.config.max_nest_level);
-        println!("  Max bytes display: {}", dumper.config.max_bytes_display);
-        println!();
-    } else if !dumper.config.compact {
-        println!("Dumping CBOR file: {}\n", filename);
-    }
-
-    dumper.dump_cbor(&mut reader)?;
-
-    Ok(())
 }

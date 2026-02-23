@@ -736,6 +736,50 @@ fn parse_args() -> Result<(Config, Option<String>), String> {
     parse_args_from(&args)
 }
 
+fn main() -> io::Result<()> {
+    let (config, filename) = match parse_args() {
+        Ok((cfg, file)) => (cfg, file),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            eprintln!("\nUse --help for usage information");
+            std::process::exit(1);
+        }
+    };
+
+    let filename = match filename {
+        Some(f) => f,
+        None => {
+            eprintln!("Error: No input file specified");
+            eprintln!("\nUse --help for usage information");
+            std::process::exit(1);
+        }
+    };
+
+    let file = File::open(&filename).map_err(|e| {
+        eprintln!("Error opening file '{}': {}", filename, e);
+        e
+    })?;
+    let mut reader = BufReader::new(file);
+
+    let mut dumper = Asn1Dumper::new(config);
+
+    if dumper.config.verbose {
+        println!("Dumping ASN.1 file: {}", filename);
+        println!("Configuration:");
+        println!("  Print all data: {}", dumper.config.print_all_data);
+        println!("  Check charset: {}", dumper.config.check_charset);
+        println!("  Check encapsulation: {}", dumper.config.check_encaps);
+        println!("  Max nesting level: {}", dumper.config.max_nest_level);
+        println!();
+    } else if !dumper.config.do_pure {
+        println!("Dumping ASN.1 file: {}\n", filename);
+    }
+
+    dumper.dump_asn1(&mut reader)?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -801,48 +845,4 @@ mod tests {
         let err = result.expect_err("should fail on unknown option");
         assert!(err.contains("Unknown option"), "unexpected error: {err}");
     }
-}
-
-fn main() -> io::Result<()> {
-    let (config, filename) = match parse_args() {
-        Ok((cfg, file)) => (cfg, file),
-        Err(e) => {
-            eprintln!("Error: {}", e);
-            eprintln!("\nUse --help for usage information");
-            std::process::exit(1);
-        }
-    };
-
-    let filename = match filename {
-        Some(f) => f,
-        None => {
-            eprintln!("Error: No input file specified");
-            eprintln!("\nUse --help for usage information");
-            std::process::exit(1);
-        }
-    };
-
-    let file = File::open(&filename).map_err(|e| {
-        eprintln!("Error opening file '{}': {}", filename, e);
-        e
-    })?;
-    let mut reader = BufReader::new(file);
-
-    let mut dumper = Asn1Dumper::new(config);
-
-    if dumper.config.verbose {
-        println!("Dumping ASN.1 file: {}", filename);
-        println!("Configuration:");
-        println!("  Print all data: {}", dumper.config.print_all_data);
-        println!("  Check charset: {}", dumper.config.check_charset);
-        println!("  Check encapsulation: {}", dumper.config.check_encaps);
-        println!("  Max nesting level: {}", dumper.config.max_nest_level);
-        println!();
-    } else if !dumper.config.do_pure {
-        println!("Dumping ASN.1 file: {}\n", filename);
-    }
-
-    dumper.dump_asn1(&mut reader)?;
-
-    Ok(())
 }
