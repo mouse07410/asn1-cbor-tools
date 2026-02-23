@@ -89,6 +89,7 @@ impl CborItem {
 }
 
 /// Configuration options for the dumper
+#[derive(Debug)]
 struct Config {
     print_hex: bool,
     max_bytes_display: usize,
@@ -219,19 +220,15 @@ impl CborDumper {
                 if additional_info == AI_INDEFINITE {
                     // Indefinite-length byte string
                     let mut chunks = Vec::new();
-                    loop {
-                        if let Some(chunk) = self.read_item(reader)? {
-                            if let CborValue::Break = chunk.value {
-                                break;
-                            }
-                            if let CborValue::Bytes(b) = chunk.value {
-                                chunks.extend(b);
-                            } else {
-                                self.no_errors += 1;
-                                eprintln!("Error: Non-byte-string chunk in indefinite byte string");
-                            }
-                        } else {
+                    while let Some(chunk) = self.read_item(reader)? {
+                        if let CborValue::Break = chunk.value {
                             break;
+                        }
+                        if let CborValue::Bytes(b) = chunk.value {
+                            chunks.extend(b);
+                        } else {
+                            self.no_errors += 1;
+                            eprintln!("Error: Non-byte-string chunk in indefinite byte string");
                         }
                     }
                     CborValue::Bytes(chunks)
@@ -247,19 +244,15 @@ impl CborDumper {
                 if additional_info == AI_INDEFINITE {
                     // Indefinite-length text string
                     let mut text = String::new();
-                    loop {
-                        if let Some(chunk) = self.read_item(reader)? {
-                            if let CborValue::Break = chunk.value {
-                                break;
-                            }
-                            if let CborValue::Text(t) = chunk.value {
-                                text.push_str(&t);
-                            } else {
-                                self.no_errors += 1;
-                                eprintln!("Error: Non-text-string chunk in indefinite text string");
-                            }
-                        } else {
+                    while let Some(chunk) = self.read_item(reader)? {
+                        if let CborValue::Break = chunk.value {
                             break;
+                        }
+                        if let CborValue::Text(t) = chunk.value {
+                            text.push_str(&t);
+                        } else {
+                            self.no_errors += 1;
+                            eprintln!("Error: Non-text-string chunk in indefinite text string");
                         }
                     }
                     CborValue::Text(text)
@@ -281,15 +274,11 @@ impl CborDumper {
                 if additional_info == AI_INDEFINITE {
                     // Indefinite-length array
                     let mut items = Vec::new();
-                    loop {
-                        if let Some(item) = self.read_item(reader)? {
-                            if let CborValue::Break = item.value {
-                                break;
-                            }
-                            items.push(item);
-                        } else {
+                    while let Some(item) = self.read_item(reader)? {
+                        if let CborValue::Break = item.value {
                             break;
                         }
+                        items.push(item);
                     }
                     CborValue::Array(items)
                 } else {
@@ -311,19 +300,15 @@ impl CborDumper {
                 if additional_info == AI_INDEFINITE {
                     // Indefinite-length map
                     let mut pairs = Vec::new();
-                    loop {
-                        if let Some(key) = self.read_item(reader)? {
-                            if let CborValue::Break = key.value {
-                                break;
-                            }
-                            if let Some(value) = self.read_item(reader)? {
-                                pairs.push((key, value));
-                            } else {
-                                self.no_errors += 1;
-                                eprintln!("Error: Missing value in map");
-                                break;
-                            }
+                    while let Some(key) = self.read_item(reader)? {
+                        if let CborValue::Break = key.value {
+                            break;
+                        }
+                        if let Some(value) = self.read_item(reader)? {
+                            pairs.push((key, value));
                         } else {
+                            self.no_errors += 1;
+                            eprintln!("Error: Missing value in map");
                             break;
                         }
                     }
@@ -509,12 +494,10 @@ impl CborDumper {
                     } else {
                         println!("\"{}...\"", &s[..80]);
                     }
+                } else if self.config.show_types {
+                    println!("{}: \"{}\"", type_prefix, s);
                 } else {
-                    if self.config.show_types {
-                        println!("{}: \"{}\"", type_prefix, s);
-                    } else {
-                        println!("\"{}\"", s);
-                    }
+                    println!("\"{}\"", s);
                 }
             }
             CborValue::Array(items) => {
@@ -559,12 +542,10 @@ impl CborDumper {
                     } else {
                         println!("tag({}) {{", name);
                     }
+                } else if self.config.show_types {
+                    println!("{} {} {{", type_prefix, tag);
                 } else {
-                    if self.config.show_types {
-                        println!("{} {} {{", type_prefix, tag);
-                    } else {
-                        println!("tag({}) {{", tag);
-                    }
+                    println!("tag({}) {{", tag);
                 }
                 self.print_item(tagged_item, level + 1)?;
                 self.print_indent(level);
@@ -705,9 +686,7 @@ fn print_help(program_name: &str) {
     println!("  3: Text string (UTF-8)    7: Simple value/float");
 }
 
-fn parse_args() -> Result<(Config, Option<String>), String> {
-    let args: Vec<String> = env::args().collect();
-
+fn parse_args_from(args: &[String]) -> Result<(Config, Option<String>), String> {
     if args.len() < 2 {
         return Err("No input file specified".to_string());
     }
@@ -776,11 +755,11 @@ fn parse_args() -> Result<(Config, Option<String>), String> {
                     return Err(format!("Unknown option: {}", arg));
                 }
                 // Positional argument - input file
-                if input_file.is_none() {
-                    input_file = Some(arg.clone());
-                } else {
+                if let Some(existing) = &input_file {
                     return Err(format!("Multiple input files specified: {} and {}",
-                                      input_file.as_ref().unwrap(), arg));
+                                      existing, arg));
+                } else {
+                    input_file = Some(arg.clone());
                 }
             }
         }
@@ -788,6 +767,69 @@ fn parse_args() -> Result<(Config, Option<String>), String> {
     }
 
     Ok((config, input_file))
+}
+
+fn parse_args() -> Result<(Config, Option<String>), String> {
+    let args: Vec<String> = env::args().collect();
+    parse_args_from(&args)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(slice: &[&str]) -> Vec<String> {
+        slice.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn test_parse_single_input_file() {
+        let result = parse_args_from(&args(&["dumpcbor", "input.cbor"]));
+        let (_, file) = result.expect("should succeed");
+        assert_eq!(file, Some("input.cbor".to_string()));
+    }
+
+    #[test]
+    fn test_parse_multiple_input_files_errors() {
+        let result = parse_args_from(&args(&["dumpcbor", "first.cbor", "second.cbor"]));
+        let err = result.expect_err("should fail with multiple files");
+        assert!(
+            err.contains("Multiple input files specified"),
+            "unexpected error message: {err}"
+        );
+        assert!(err.contains("first.cbor"), "error should name the first file: {err}");
+        assert!(err.contains("second.cbor"), "error should name the second file: {err}");
+    }
+
+    #[test]
+    fn test_parse_no_args_errors() {
+        let result = parse_args_from(&args(&["dumpcbor"]));
+        let err = result.expect_err("should fail with no args");
+        assert!(err.contains("No input file specified"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn test_parse_flags_with_file() {
+        let result = parse_args_from(&args(&["dumpcbor", "-v", "--print-all", "input.cbor"]));
+        let (config, file) = result.expect("should succeed");
+        assert!(config.verbose);
+        assert!(config.print_all_data);
+        assert_eq!(file, Some("input.cbor".to_string()));
+    }
+
+    #[test]
+    fn test_parse_f_flag_sets_input_file() {
+        let result = parse_args_from(&args(&["dumpcbor", "-f", "via_flag.cbor"]));
+        let (_, file) = result.expect("should succeed");
+        assert_eq!(file, Some("via_flag.cbor".to_string()));
+    }
+
+    #[test]
+    fn test_parse_unknown_option_errors() {
+        let result = parse_args_from(&args(&["dumpcbor", "--unknown"]));
+        let err = result.expect_err("should fail on unknown option");
+        assert!(err.contains("Unknown option"), "unexpected error: {err}");
+    }
 }
 
 fn main() -> io::Result<()> {

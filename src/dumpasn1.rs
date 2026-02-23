@@ -78,6 +78,7 @@ impl Asn1Item {
 }
 
 /// Configuration options for the dumper
+#[derive(Debug, Clone)]
 struct Config {
     print_dots: bool,
     do_pure: bool,
@@ -414,15 +415,11 @@ impl Asn1Dumper {
 
         if item.indefinite {
             // Indefinite length - read until EOC
-            loop {
-                if let Some(sub_item) = self.get_item(reader)? {
-                    if sub_item.tag == EOC && sub_item.length == 0 {
-                        break;
-                    }
-                    self.print_asn1_object(reader, &sub_item, level + 1)?;
-                } else {
+            while let Some(sub_item) = self.get_item(reader)? {
+                if sub_item.tag == EOC && sub_item.length == 0 {
                     break;
                 }
+                self.print_asn1_object(reader, &sub_item, level + 1)?;
             }
         } else {
             // Definite length
@@ -579,9 +576,7 @@ fn print_help(program_name: &str) {
     println!("\nThe input file should contain binary DER-encoded ASN.1 data.");
 }
 
-fn parse_args() -> Result<(Config, Option<String>), String> {
-    let args: Vec<String> = env::args().collect();
-
+fn parse_args_from(args: &[String]) -> Result<(Config, Option<String>), String> {
     if args.len() < 2 {
         return Err("No input file specified".to_string());
     }
@@ -674,11 +669,11 @@ fn parse_args() -> Result<(Config, Option<String>), String> {
                     return Err(format!("Unknown option: {}", arg));
                 }
                 // Positional argument - input file
-                if input_file.is_none() {
-                    input_file = Some(arg.clone());
-                } else {
+                if let Some(existing) = &input_file {
                     return Err(format!("Multiple input files specified: {} and {}",
-                                      input_file.as_ref().unwrap(), arg));
+                                      existing, arg));
+                } else {
+                    input_file = Some(arg.clone());
                 }
             }
         }
@@ -686,6 +681,69 @@ fn parse_args() -> Result<(Config, Option<String>), String> {
     }
 
     Ok((config, input_file))
+}
+
+fn parse_args() -> Result<(Config, Option<String>), String> {
+    let args: Vec<String> = env::args().collect();
+    parse_args_from(&args)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(slice: &[&str]) -> Vec<String> {
+        slice.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn test_parse_single_input_file() {
+        let result = parse_args_from(&args(&["dumpasn1", "input.der"]));
+        let (_, file) = result.expect("should succeed");
+        assert_eq!(file, Some("input.der".to_string()));
+    }
+
+    #[test]
+    fn test_parse_multiple_input_files_errors() {
+        let result = parse_args_from(&args(&["dumpasn1", "first.der", "second.der"]));
+        let err = result.expect_err("should fail with multiple files");
+        assert!(
+            err.contains("Multiple input files specified"),
+            "unexpected error message: {err}"
+        );
+        assert!(err.contains("first.der"), "error should name the first file: {err}");
+        assert!(err.contains("second.der"), "error should name the second file: {err}");
+    }
+
+    #[test]
+    fn test_parse_no_args_errors() {
+        let result = parse_args_from(&args(&["dumpasn1"]));
+        let err = result.expect_err("should fail with no args");
+        assert!(err.contains("No input file specified"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn test_parse_flags_with_file() {
+        let result = parse_args_from(&args(&["dumpasn1", "-v", "--print-all", "input.der"]));
+        let (config, file) = result.expect("should succeed");
+        assert!(config.verbose);
+        assert!(config.print_all_data);
+        assert_eq!(file, Some("input.der".to_string()));
+    }
+
+    #[test]
+    fn test_parse_f_flag_sets_input_file() {
+        let result = parse_args_from(&args(&["dumpasn1", "-f", "via_flag.der"]));
+        let (_, file) = result.expect("should succeed");
+        assert_eq!(file, Some("via_flag.der".to_string()));
+    }
+
+    #[test]
+    fn test_parse_unknown_option_errors() {
+        let result = parse_args_from(&args(&["dumpasn1", "--unknown"]));
+        let err = result.expect_err("should fail on unknown option");
+        assert!(err.contains("Unknown option"), "unexpected error: {err}");
+    }
 }
 
 fn main() -> io::Result<()> {
