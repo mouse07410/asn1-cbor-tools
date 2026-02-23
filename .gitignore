@@ -20,4 +20,4 @@ Thumbs.db
 # Test files
 *.der
 *.cbor
-test_*
+#test_*
